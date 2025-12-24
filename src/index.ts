@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { Client, GatewayIntentBits, type SendableChannels, type SendableChannelTypes, type TextBasedChannel } from "discord.js";
+import { startWebhookListener } from "./webhookListener"
 
 // console.log("DISCORD_TOKEN set:", process.env.DISCORD_TOKEN ? "yes" : "no");
 // console.log("DISCORD_CHANNEL_ID set:", process.env.DISCORD_CHANNEL_ID ? "yes" : "no");
@@ -18,6 +19,8 @@ async function main() {
 
     if (!token) throw new Error("DISCORD_TOKEN is missing in .env");
     if (!channelID) throw new Error("DISCORD_CHANNEL_ID is missing in .env");
+
+    startWebhookListener();
 
 
     const client = new Client({
