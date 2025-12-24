@@ -75,7 +75,6 @@ async function checkPlex() {
 
     try {
         const response = await fetch(url, {signal});
-        console.log("SUCCESS -> Reached Plex.")
         return true;
 
     } catch(err) {
