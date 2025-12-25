@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from "express";
 import multer from "multer";
 import type { Request, Response } from "express";
+import { onLibraryNew } from "./batch"
 
 export function startWebhookListener() {
     const app = express();
@@ -11,6 +12,8 @@ export function startWebhookListener() {
 
     const port = Number(process.env.PLEX_PORT) || 8787;
     app.listen(port, () => {console.log(`Starting Listener on http://127.0.0.1:${port}/plex-webhook`);});
+
+    console.log("typeof onLibraryNew =", typeof onLibraryNew);
 }
 
 function handler(req: Request, res: Response) {
@@ -38,7 +41,11 @@ function handler(req: Request, res: Response) {
 
     if (data.event === "library.new") {
         console.log("Received New Library")
-        console.log(data.Metadata);
+        try {
+            onLibraryNew(data.Metadata);
+        } catch (e) {
+            console.error("onLibraryNew crashed:", e);
+        };
     }
 
     return res.sendStatus(200);
