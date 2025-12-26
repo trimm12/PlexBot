@@ -47,7 +47,7 @@ export function onLibraryNew(metadata: any) {
     const ratingKey = metadata.ratingKey;
         
     if (moviesByKey.has(ratingKey)) {
-        console.log("Found same Movie Rating Key");
+        console.log("[onLibraryNew] Found same Movie Rating Key");
         resetIdleTimer();
         return;
     }
@@ -58,14 +58,14 @@ export function onLibraryNew(metadata: any) {
         type: "movie"
     });
 
-    console.log("Movie size: " + moviesByKey.size);
+    console.log("[onLibraryNew] Movie size: " + moviesByKey.size);
    } 
    
    if (metadata.type === "episode") {
     const ratingKey = metadata.ratingKey;
 
     if (episodesByKey.has(ratingKey)) {
-        console.log("Found same Episode Rating Key");
+        console.log("[onLibraryNew] Found same Episode Rating Key");
         resetIdleTimer();
         return;
     }
@@ -79,7 +79,7 @@ export function onLibraryNew(metadata: any) {
         episodeNumber: metadata.index
     });
 
-    console.log("Episode size: " + episodesByKey.size);
+    console.log("[onLibraryNew] Episode size: " + episodesByKey.size);
    }
 
    if (metadata.type === "show") {
