@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { Client, GatewayIntentBits, type SendableChannels, type SendableChannelTypes, type TextBasedChannel } from "discord.js";
-import { startWebhookListener } from "./webhookListener";
-import { setBatchSender} from "./batch";
+import { startWebhookListener } from "./webhookListener.js";
+import { setBatchSender} from "./batch.js";
 
 // console.log("DISCORD_TOKEN set:", process.env.DISCORD_TOKEN ? "yes" : "no");
 // console.log("DISCORD_CHANNEL_ID set:", process.env.DISCORD_CHANNEL_ID ? "yes" : "no");

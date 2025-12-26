@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from "express";
 import multer from "multer";
 import type { Request, Response } from "express";
-import { onLibraryNew } from "./batch"
+import { onLibraryNew } from "./batch.js"
 
 export function startWebhookListener() {
     const app = express();
