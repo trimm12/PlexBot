@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { Client, GatewayIntentBits, type SendableChannels, type SendableChannelTypes, type TextBasedChannel } from "discord.js";
-import { startWebhookListener } from "./webhookListener"
+import { startWebhookListener } from "./webhookListener";
+import { setBatchSender} from "./batch";
 
 // console.log("DISCORD_TOKEN set:", process.env.DISCORD_TOKEN ? "yes" : "no");
 // console.log("DISCORD_CHANNEL_ID set:", process.env.DISCORD_CHANNEL_ID ? "yes" : "no");
@@ -20,8 +21,6 @@ async function main() {
     if (!token) throw new Error("DISCORD_TOKEN is missing in .env");
     if (!channelID) throw new Error("DISCORD_CHANNEL_ID is missing in .env");
 
-    startWebhookListener();
-
 
     const client = new Client({
         intents: [GatewayIntentBits.Guilds],
@@ -38,6 +37,12 @@ async function main() {
 
             if (!("send" in channel)) throw new Error("Channel cannot receive messages.");
 
+            setBatchSender(async (msg: string) => {
+                await channel.send(msg);
+            })
+
+            startWebhookListener();
+
             await compareStates(channel);
             setInterval(async () => {
                 await compareStates(channel);
@@ -49,6 +54,7 @@ async function main() {
             process.exit(1);
         }
         });
+
 
         await client.login(token);
         }
@@ -135,13 +141,11 @@ async function compareStates(channel: SendableChannels): Promise<State> {
 
     if (result !== lastState) {
         lastState = result;
-        await channel.send(lastState);
+        await channel.send("Plex Server is " + lastState);
 
     }
 
     return lastState;
 
 }
-
-
 

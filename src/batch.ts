@@ -1,4 +1,4 @@
-const idle_ms = 10000
+const idle_ms = 90000
 const hard_cap_ms = 600000
 
 let idleTimer: NodeJS.Timeout | null = null;
@@ -10,7 +10,13 @@ let batchStartedAt = 0;
 
 let moviesByKey = new Map<string, {ratingKey: string, title: string, type: "movie"}>();
 let episodesByKey = new Map<string, {ratingKey: string, title: string, type: "episode", showTitle: string, seasonNumber: number, episodeNumber: number}>();
-let showsByKey = new Map<string, { ratingKey: string, title: string, type: "show"}>();
+let showsByKey = new Map<string, { ratingKey: string, title: string, type: "show", leafCount: number}>();
+
+let sendFn: ((msg: string) => Promise<void>) | null = null;
+
+export function setBatchSender(fn: (msg: string) => Promise<void>) {
+    sendFn = fn;
+}
 
 export function onLibraryNew(metadata: any) {
 
@@ -88,7 +94,8 @@ export function onLibraryNew(metadata: any) {
     showsByKey.set(ratingKey, {
         ratingKey,
         title: metadata.title,
-        type: "show"
+        type: "show",
+        leafCount: metadata.leafCount
     });
 
     console.log("[onLibraryNew] Show size: ", showsByKey.size);
@@ -165,6 +172,11 @@ async function flush() {
 
     console.log("[flush] Movies flushed:", moviesByKey.size, "Episodes flushed:", episodesByKey.size, "Shows flushed:", showsByKey.size);
 
+    const msg = createMessage();
+    if (sendFn && msg.trim()) {
+        await sendFn(msg);
+    }
+
     hardCapTimer = null;
     idleTimer = null;
     batchOpen = false;
@@ -182,3 +194,50 @@ async function flush() {
         isFlushing = false;
     }
 }
+
+function createMessage() {
+
+    let finalMessage: string = "Added the following to Plex:\n"
+    let finalShowMsg: string = ""
+    let finalMovieMsg: string = ""
+
+    if (moviesByKey.size > 0) {
+
+        let movieMessage: string = ("\nMovies:\n")
+        
+        moviesByKey.forEach((movie, ratingKey) => {
+            movieMessage = (movieMessage + movie.title + "\n")
+        })
+
+        finalMovieMsg = movieMessage;
+
+        }
+
+    if ((episodesByKey.size > 0) || (showsByKey.size > 0)) {
+
+        let showMessage: string = "\nShows:\n"
+
+        if (showsByKey.size > 0) {
+
+            showsByKey.forEach((show, ratingKey) => {
+                showMessage = (showMessage + "Added New Episodes to " + show.title + "\n")
+            })
+        }
+
+        if (episodesByKey.size > 0) {
+
+            episodesByKey.forEach((episode, ratingKey) => {
+
+                showMessage = showMessage + "Added S" + String(episode.seasonNumber).padStart(2, "0") + "E" + String(episode.episodeNumber).padStart(2, "0") + " of " + episode.showTitle + "\n";
+            })
+        }
+
+        finalShowMsg = showMessage;
+
+    }
+
+    finalMessage = (finalMessage + finalMovieMsg + finalShowMsg);
+
+    return finalMessage;
+
+    }
