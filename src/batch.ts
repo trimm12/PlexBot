@@ -220,7 +220,7 @@ function createMessage() {
         if (showsByKey.size > 0) {
 
             showsByKey.forEach((show, ratingKey) => {
-                showMessage = (showMessage + "Added New Episodes to " + show.title + "\n")
+                showMessage = (showMessage + "Added New Episodes to " + show.title + " (Total Episode Count: " + show.leafCount + ")\n");
             })
         }
 
