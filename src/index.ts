@@ -1,7 +1,10 @@
 import 'dotenv/config';
-import { Client, GatewayIntentBits, type SendableChannels, type SendableChannelTypes, type TextBasedChannel } from "discord.js";
+import { Client, GatewayIntentBits, type SendableChannels } from "discord.js";
 import { startWebhookListener } from "./webhookListener.js";
-import { setBatchSender} from "./batch.js";
+import { setBatchSender } from "./batch.js";
+import { handleCommand } from "./commands/index.js";
+import { loadConfig } from "./config.js";
+
 
 // console.log("DISCORD_TOKEN set:", process.env.DISCORD_TOKEN ? "yes" : "no");
 // console.log("DISCORD_CHANNEL_ID set:", process.env.DISCORD_CHANNEL_ID ? "yes" : "no");
@@ -14,6 +17,9 @@ import { setBatchSender} from "./batch.js";
     type State = "ONLINE" | "OFFLINE" | null;
     let lastState: State = null;
 
+    const PREFIX = "!"
+    const OWNER_ID = process.env.OWNER_ID ?? "";
+
 async function main() {
     const token = process.env.DISCORD_TOKEN;
     const channelID = process.env.DISCORD_CHANNEL_ID;
@@ -23,7 +29,11 @@ async function main() {
 
 
     const client = new Client({
-        intents: [GatewayIntentBits.Guilds],
+        intents: [
+            GatewayIntentBits.Guilds,
+            GatewayIntentBits.GuildMessages,
+            GatewayIntentBits.MessageContent
+        ]
     });
 
     client.once("clientReady", async () => {
@@ -36,16 +46,21 @@ async function main() {
             if (!channel.isTextBased()) throw new Error("That channel is not a text-based channel.");
 
             if (!("send" in channel)) throw new Error("Channel cannot receive messages.");
+            const sendChannel = channel as SendableChannels;
+
+            client.on("messageCreate", async (msg) => {
+                await handleCommand(msg, PREFIX, OWNER_ID);
+            });
 
             setBatchSender(async (msg: string) => {
-                await channel.send(msg);
+                await sendChannel.send(msg);
             })
 
             startWebhookListener();
 
-            await compareStates(channel);
+            await compareStates(sendChannel);
             setInterval(async () => {
-                await compareStates(channel);
+                await compareStates(sendChannel);
             }, 30000);
 
         }   catch(err) {
@@ -141,6 +156,11 @@ async function compareStates(channel: SendableChannels): Promise<State> {
 
     if (result !== lastState) {
         lastState = result;
+
+        const cfg = loadConfig();
+        if (!cfg.statusPingsEnabled) return lastState;
+
+
         await channel.send("Plex Server is " + lastState);
 
     }

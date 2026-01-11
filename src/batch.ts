@@ -22,15 +22,7 @@ export function onLibraryNew(metadata: any) {
 
     console.log("Running onLibraryNew Function");
 
-    console.log(
-    "[onLibraryNew] received:",
-    "type=",
-    metadata?.type,
-    "| ratingKey=",
-    metadata?.ratingKey,
-    "| title=",
-    metadata?.title
-  );
+    console.log("[onLibraryNew] received:", "type=", metadata?.type, "| ratingKey=", metadata?.ratingKey, "| title=", metadata?.title);
 
    if (!metadata.ratingKey) {
     return;
@@ -116,11 +108,7 @@ function startBatchIfNeeded() {
 
     hardCapTimer = setTimeout(onHardCapTimerFinished, hard_cap_ms)
 
-    console.log(
-    "[batch] opened. hard cap scheduled for",
-    hard_cap_ms,
-    "ms"
-    );
+    console.log("[batch] opened. hard cap scheduled for", hard_cap_ms, "ms");
 
 }
 
@@ -177,20 +165,17 @@ async function flush() {
         await sendFn(msg);
     }
 
-    hardCapTimer = null;
-    idleTimer = null;
-    batchOpen = false;
-    batchStartedAt = 0;
-    moviesByKey.clear();
-    episodesByKey.clear();
-    showsByKey.clear();
-
-    // send stuff here
-
     } catch (err) {
         console.log(err);
 
     } finally {
+        hardCapTimer = null;
+        idleTimer = null;
+        batchOpen = false;
+        batchStartedAt = 0;
+        moviesByKey.clear();
+        episodesByKey.clear();
+        showsByKey.clear();
         isFlushing = false;
     }
 }
@@ -220,7 +205,7 @@ function createMessage() {
         if (showsByKey.size > 0) {
 
             showsByKey.forEach((show, ratingKey) => {
-                showMessage = (showMessage + "Added New Episodes to " + show.title + " (Total Episode Count: " + show.leafCount + ")\n");
+                showMessage = (showMessage + show.title + " (Total Episode Count: " + show.leafCount + ")\n");
             })
         }
 
