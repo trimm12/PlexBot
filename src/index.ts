@@ -1,24 +1,19 @@
 import 'dotenv/config';
 import { Client, GatewayIntentBits, type SendableChannels } from "discord.js";
-import { startWebhookListener } from "./webhookListener.js";
-import { setBatchSender } from "./batch.js";
-import { handleCommand } from "./commands/index.js";
+import { registerEvents } from "./events.js";
 import { loadConfig } from "./config.js";
 
+let isChecking: boolean = false;
+let successesInARow = 0;
+let failuresInARow = 0;
+type State = "ONLINE" | "OFFLINE" | null;
+let lastState: State = null;
 
-// console.log("DISCORD_TOKEN set:", process.env.DISCORD_TOKEN ? "yes" : "no");
-// console.log("DISCORD_CHANNEL_ID set:", process.env.DISCORD_CHANNEL_ID ? "yes" : "no");
-// console.log("PLEX_URL:", process.env.PLEX_URL);
-// console.log("POLL_INTERVAL_SECONDS:", process.env.POLL_INTERVAL_SECONDS);
-
-    let isChecking: boolean = false;
-    let successesInARow = 0;
-    let failuresInARow = 0;
-    type State = "ONLINE" | "OFFLINE" | null;
-    let lastState: State = null;
-
-    const PREFIX = "!"
-    const OWNER_ID = process.env.OWNER_ID ?? "";
+const PREFIX = "!";
+const OWNER_IDS = (process.env.OWNER_IDS ?? process.env.OWNER_ID ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
 
 async function main() {
     const token = process.env.DISCORD_TOKEN;
@@ -26,7 +21,6 @@ async function main() {
 
     if (!token) throw new Error("DISCORD_TOKEN is missing in .env");
     if (!channelID) throw new Error("DISCORD_CHANNEL_ID is missing in .env");
-
 
     const client = new Client({
         intents: [
@@ -36,49 +30,26 @@ async function main() {
         ]
     });
 
-    client.once("clientReady", async () => {
-        try {
-            console.log("Logged in as:", client.user?.tag);
-
-            const channel = await client.channels.fetch(channelID);
-
-            if (!channel) throw new Error("Channel not found. Check DISCORD_CHANNEL_ID.");
-            if (!channel.isTextBased()) throw new Error("That channel is not a text-based channel.");
-
-            if (!("send" in channel)) throw new Error("Channel cannot receive messages.");
-            const sendChannel = channel as SendableChannels;
-
-            client.on("messageCreate", async (msg) => {
-                await handleCommand(msg, PREFIX, OWNER_ID);
-            });
-
-            setBatchSender(async (msg: string) => {
-                await sendChannel.send(msg);
-            })
-
-            startWebhookListener();
-
+    registerEvents({
+        client,
+        channelId: channelID,
+        prefix: PREFIX,
+        ownerIds: OWNER_IDS,
+        onReady: async (sendChannel: SendableChannels) => {
             await compareStates(sendChannel);
             setInterval(async () => {
                 await compareStates(sendChannel);
-            }, 30000);
-
-        }   catch(err) {
-            console.error("Failed to send message:", err);
-            await client.destroy();
-            process.exit(1);
+            }, getPollingValue());
         }
-        });
+    });
 
-
-        await client.login(token);
-        }
+    await client.login(token);
+}
 
 main().catch((err) => {
     console.error(err);
     process.exit(1);
 });
-
 
 function getPollingValue() {
     let num = Number(process.env.POLL_INTERVAL_SECONDS);
@@ -87,37 +58,29 @@ function getPollingValue() {
         num = 30;
     }
 
-    let num_ms = num * 1000;
-
-    return num_ms;
+    return num * 1000;
 }
 
-async function checkPlex() {
-
+async function checkPlex(): Promise<boolean> {
     const url = (process.env.PLEX_URL + "/identity");
     const signal = AbortSignal.timeout(5000);
 
     try {
-        const response = await fetch(url, {signal});
+        await fetch(url, { signal });
         return true;
-
-    } catch(err) {
+    } catch (err) {
         if (err instanceof Error) {
-            console.log(err);
             if (err.name === "TimeoutError") {
                 console.log("ERROR! -> Timeout Error.");
-                return false;
             } else {
                 console.log("ERROR! -> Could not reach Plex.");
-                return false;
             }
         }
+        return false;
     }
-
 }
 
 async function pollPlex() {
-
     let declared: State = null;
 
     if (isChecking) {
@@ -125,29 +88,27 @@ async function pollPlex() {
     }
 
     try {
+        isChecking = true;
+        let result = await checkPlex();
 
-    isChecking = true;
-    let result = await checkPlex();
+        if (result) {
+            successesInARow += 1;
+            failuresInARow = 0;
+        } else {
+            successesInARow = 0;
+            failuresInARow += 1;
+        }
 
-    if (result) {
-        successesInARow += 1;
-         failuresInARow = 0;
-     } else {
-         successesInARow = 0;
-        failuresInARow += 1;
-      }
+        if (successesInARow >= 1) declared = "ONLINE";
+        if (failuresInARow >= 2) declared = "OFFLINE";
 
-    if (successesInARow >= 1) declared = "ONLINE";
-    if (failuresInARow >= 2) declared = "OFFLINE";
-
-    return declared;
+        return declared;
     } finally {
         isChecking = false;
     }
 }
 
 async function compareStates(channel: SendableChannels): Promise<State> {
-
     let result = await pollPlex();
 
     if (result === null) {
@@ -160,12 +121,8 @@ async function compareStates(channel: SendableChannels): Promise<State> {
         const cfg = loadConfig();
         if (!cfg.statusPingsEnabled) return lastState;
 
-
         await channel.send("Plex Server is " + lastState);
-
     }
 
     return lastState;
-
 }
-
