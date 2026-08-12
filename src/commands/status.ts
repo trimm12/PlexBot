@@ -3,18 +3,14 @@ import { loadConfig, saveConfig } from "../config.js";
 
 export const name = "status";
 export const help = "!status [on | off]";
+export const ownerOnly = true;
 
 export async function run(
     msg: Message,
     args: string[],
-    ownerId: string
+    ownerIds: string[]
 ) {
     if (msg.author.bot) return;
-
-    if (msg.author.id !== ownerId) {
-        await msg.reply("You don't have permissions to use this command.");
-        return;
-    }
 
     const cfg = loadConfig();
     const arg = (args[0] ?? "status").toLowerCase();
